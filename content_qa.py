@@ -641,7 +641,17 @@ def review_sheet(spreadsheet_id, worksheet=0):
 from fastapi import FastAPI  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
-app = FastAPI(title="Velocity Content QA")
+
+def _build_api_app():
+    # Built inside a function, rather than a top-level `app = FastAPI(...)`
+    # literal, because `streamlit run` statically scans the script for that
+    # exact pattern and — if found — hijacks the run to serve this ASGI app
+    # directly instead of the Streamlit UI. That broke health checks and the
+    # UI on Streamlit Cloud. The indirection here is invisible to that scan.
+    return FastAPI(title="Velocity Content QA")
+
+
+app = _build_api_app()
 
 
 class ReviewRequest(BaseModel):
