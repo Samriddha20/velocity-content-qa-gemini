@@ -1,0 +1,8 @@
+google-genai
+streamlit
+textstat
+gspread
+google-auth
+fastapi
+uvicorn
+pydantic

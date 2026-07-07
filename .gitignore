@@ -1,0 +1,24 @@
+# Secrets — never commit these
+service_account.json
+.env
+.streamlit/secrets.toml
+
+# Claude Code local settings (contains machine-specific, potentially sensitive command history)
+.claude/
+
+# Debug/test artifacts
+preview.png
+
+# Local database (created on first run)
+*.db
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+
+# OS junk
+.DS_Store
+Thumbs.db
