@@ -285,7 +285,7 @@ def fetch_competitor_data(keyword, content_type):
 # LLM — production system prompt + single Claude call + scoring (swap provider here)
 # ===========================================================================
 from google import genai  # noqa: E402
-from google.genai import types  # noqa: E402
+from google.genai import errors, types  # noqa: E402
 
 
 def _get_gemini_api_key():
@@ -437,20 +437,30 @@ Return ONLY the JSON object in exactly this shape:
 
 def _call_model(system_prompt, user_message):
     """The ONLY provider-specific code. To move to Claude later, this is all you change."""
-    resp = _client.models.generate_content(
-        model=MODEL,
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=TEMPERATURE,
-            max_output_tokens=MAX_TOKENS,
-            response_mime_type="application/json",  # ask Gemini for clean JSON
-            # gemini-2.5-flash spends max_output_tokens on internal "thinking" before
-            # writing output, which was truncating the JSON before it printed. Not
-            # needed for a structured-extraction task like this.
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-        ),
-    )
+    try:
+        resp = _client.models.generate_content(
+            model=MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=TEMPERATURE,
+                max_output_tokens=MAX_TOKENS,
+                response_mime_type="application/json",  # ask Gemini for clean JSON
+                # gemini-2.5-flash spends max_output_tokens on internal "thinking" before
+                # writing output, which was truncating the JSON before it printed. Not
+                # needed for a structured-extraction task like this.
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+    except errors.ClientError as e:
+        msg = f"Gemini API error {e.code} {e.status}: {e.message}"
+        # Streamlit Cloud redacts uncaught exception text, so show it explicitly in the UI.
+        from streamlit import runtime
+        if runtime.exists():
+            import streamlit as st
+            st.error(msg)
+            st.stop()
+        raise RuntimeError(msg) from e  # FastAPI / CLI path
     return resp.text
 
 
