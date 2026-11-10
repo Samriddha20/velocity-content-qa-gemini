@@ -49,7 +49,7 @@ GUIDELINES_DIR = BASE_DIR / "guidelines"
 # names change. 2.5 Flash/Flash-Lite 404 for new API keys; 2.0/1.5 Flash are retired.
 # If a model errors as "not found", the UI now shows Google's exact error.
 MODEL = "gemini-3.5-flash-lite"
-MAX_TOKENS = 8192
+MAX_TOKENS = 32768  # gemini-3.5-flash-lite allows 65,536; long articles overflowed 8192
 TEMPERATURE = 0.2
 
 # Content types Velocity Media Lab produces (from the spec).
@@ -453,15 +453,23 @@ def _call_model(system_prompt, user_message):
             ),
         )
     except errors.ClientError as e:
-        msg = f"Gemini API error {e.code} {e.status}: {e.message}"
-        # Streamlit Cloud redacts uncaught exception text, so show it explicitly in the UI.
-        from streamlit import runtime
-        if runtime.exists():
-            import streamlit as st
-            st.error(msg)
-            st.stop()
-        raise RuntimeError(msg) from e  # FastAPI / CLI path
+        _fail(f"Gemini API error {e.code} {e.status}: {e.message}", e)
+    if resp.candidates and resp.candidates[0].finish_reason == types.FinishReason.MAX_TOKENS:
+        u = resp.usage_metadata
+        _fail(f"Gemini response was cut off at the {MAX_TOKENS}-token output limit, so the JSON "
+              f"is incomplete. Thinking tokens: {u.thoughts_token_count or 0}, "
+              f"output tokens: {u.candidates_token_count or 0}.")
     return resp.text
+
+
+def _fail(msg, cause=None):
+    """Streamlit Cloud redacts uncaught exception text, so show it explicitly in the UI."""
+    from streamlit import runtime
+    if runtime.exists():
+        import streamlit as st
+        st.error(msg)
+        st.stop()
+    raise RuntimeError(msg) from cause  # FastAPI / CLI path
 
 
 def _parse_json(raw):
