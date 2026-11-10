@@ -46,9 +46,9 @@ GUIDELINES_DIR = BASE_DIR / "guidelines"
 # CONFIG
 # ===========================================================================
 # Verify the model name against current Google docs (ai.google.dev/gemini-api/docs/models);
-# names change. gemini-2.5-flash is slated for API shutdown Dec 1, 2026; 2.0/1.5 Flash are
-# retired. If a model errors as "not found", the UI now shows Google's exact error.
-MODEL = "gemini-2.5-flash-lite"
+# names change. 2.5 Flash/Flash-Lite 404 for new API keys; 2.0/1.5 Flash are retired.
+# If a model errors as "not found", the UI now shows Google's exact error.
+MODEL = "gemini-3.5-flash-lite"
 MAX_TOKENS = 8192
 TEMPERATURE = 0.2
 
@@ -446,10 +446,10 @@ def _call_model(system_prompt, user_message):
                 temperature=TEMPERATURE,
                 max_output_tokens=MAX_TOKENS,
                 response_mime_type="application/json",  # ask Gemini for clean JSON
-                # Thinking eats max_output_tokens and was truncating the JSON. 2.5 Flash-Lite
-                # doesn't think by default; 0 makes "off" explicit (valid on 2.5 Flash/Flash-Lite,
-                # NOT on 2.5 Pro, and 3.x+ models use thinking_level instead).
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                # Thinking eats max_output_tokens and was truncating the JSON. 3.x models use
+                # thinking_level (thinking_budget is legacy; sending both is a 400). MINIMAL is
+                # the closest to "off" and Google's pick for structured extraction like this.
+                thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.MINIMAL),
             ),
         )
     except errors.ClientError as e:
